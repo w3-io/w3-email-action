@@ -1,0 +1,49 @@
+name: 'W3 Email Action'
+description: 'Send email from W3 workflows. Supports SendGrid, Resend, and raw SMTP.'
+author: 'w3-io'
+
+inputs:
+  provider:
+    description: 'Email provider: sendgrid, resend'
+    required: true
+    default: 'sendgrid'
+  api-key:
+    description: 'Provider API key'
+    required: true
+  to:
+    description: 'Recipient email address (or comma-separated list)'
+    required: true
+  from:
+    description: 'Sender email address'
+    required: true
+  from-name:
+    description: 'Sender display name'
+    required: false
+    default: ''
+  subject:
+    description: 'Email subject line'
+    required: true
+  body-html:
+    description: 'HTML email body'
+    required: false
+    default: ''
+  body-text:
+    description: 'Plain text email body (fallback if no HTML)'
+    required: false
+    default: ''
+  reply-to:
+    description: 'Reply-to email address'
+    required: false
+    default: ''
+
+outputs:
+  success:
+    description: 'Whether the email was accepted by the provider (true/false)'
+  status-code:
+    description: 'HTTP status code from the provider API'
+  result:
+    description: 'Full JSON result'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
