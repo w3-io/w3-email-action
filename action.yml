@@ -1,5 +1,5 @@
 name: 'W3 Email Action'
-description: 'Send email from W3 workflows. Supports SendGrid, Resend, and raw SMTP.'
+description: 'Send email from W3 workflows. Supports SendGrid, Resend. Templates, CC/BCC, attachments.'
 author: 'w3-io'
 
 inputs:
@@ -13,6 +13,14 @@ inputs:
   to:
     description: 'Recipient email address (or comma-separated list)'
     required: true
+  cc:
+    description: 'CC recipients (comma-separated)'
+    required: false
+    default: ''
+  bcc:
+    description: 'BCC recipients (comma-separated)'
+    required: false
+    default: ''
   from:
     description: 'Sender email address'
     required: true
@@ -21,8 +29,9 @@ inputs:
     required: false
     default: ''
   subject:
-    description: 'Email subject line'
-    required: true
+    description: 'Email subject line (not required when using template-id)'
+    required: false
+    default: ''
   body-html:
     description: 'HTML email body'
     required: false
@@ -33,6 +42,18 @@ inputs:
     default: ''
   reply-to:
     description: 'Reply-to email address'
+    required: false
+    default: ''
+  template-id:
+    description: 'Provider-side template ID (replaces body-html/body-text)'
+    required: false
+    default: ''
+  template-data:
+    description: 'JSON object of dynamic data for the template'
+    required: false
+    default: ''
+  attachments:
+    description: 'JSON array of attachments: [{"filename": "report.pdf", "content": "<base64>", "type": "application/pdf"}]'
     required: false
     default: ''
 
