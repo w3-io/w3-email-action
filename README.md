@@ -1,8 +1,8 @@
 # W3 Email Action
 
-Send email from W3 workflows. One interface, multiple providers.
+Send email from W3 workflows. One interface for SendGrid and Resend, with support for templates, CC/BCC, and attachments.
 
-## Usage
+## Quick Start
 
 ```yaml
 - uses: w3-io/w3-email-action@v1
@@ -16,31 +16,40 @@ Send email from W3 workflows. One interface, multiple providers.
     body-html: <h1>Invoice #1234</h1><p>Amount due: $99.00</p>
 ```
 
+## Commands
+
+This action sends email -- there is no `command` input. Configure the operation through the inputs below.
+
 ## Inputs
 
-| Input | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `provider` | yes | `sendgrid` | `sendgrid` or `resend` |
-| `api-key` | yes | | Provider API key |
-| `to` | yes | | Recipient (comma-separated for multiple) |
-| `from` | yes | | Sender email |
-| `from-name` | no | | Sender display name |
-| `subject` | yes | | Subject line |
-| `body-html` | no | | HTML body |
-| `body-text` | no | | Plain text body |
-| `reply-to` | no | | Reply-to address |
+| Name | Required | Default | Description |
+|------|----------|---------|-------------|
+| `provider` | Yes | `sendgrid` | Email provider: `sendgrid` or `resend` |
+| `api-key` | Yes | | Provider API key |
+| `to` | Yes | | Recipient email (comma-separated for multiple) |
+| `from` | Yes | | Sender email address |
+| `from-name` | No | | Sender display name |
+| `subject` | No | | Subject line (not required when using `template-id`) |
+| `body-html` | No | | HTML email body |
+| `body-text` | No | | Plain text email body (fallback) |
+| `cc` | No | | CC recipients (comma-separated) |
+| `bcc` | No | | BCC recipients (comma-separated) |
+| `reply-to` | No | | Reply-to email address |
+| `template-id` | No | | Provider-side template ID (replaces body-html/body-text) |
+| `template-data` | No | | JSON object of dynamic data for the template |
+| `attachments` | No | | JSON array of attachments: `[{"filename": "f.pdf", "content": "<base64>", "type": "application/pdf"}]` |
 
-At least one of `body-html` or `body-text` is required.
+At least one of `body-html`, `body-text`, or `template-id` is required.
 
 ## Outputs
 
-| Output | Description |
-|--------|-------------|
+| Name | Description |
+|------|-------------|
 | `success` | `true` if provider accepted the email |
-| `status-code` | HTTP status from provider API |
+| `status-code` | HTTP status code from the provider API |
 | `result` | Full JSON result |
 
-## Providers
+## Authentication
 
 ### SendGrid
 
@@ -59,59 +68,3 @@ Sign up at https://resend.com. Free tier: 100 emails/day, 1 domain.
 provider: resend
 api-key: re_xxxxx
 ```
-
-## Examples
-
-### Send with both HTML and text fallback
-
-```yaml
-- uses: w3-io/w3-email-action@v1
-  with:
-    provider: sendgrid
-    api-key: ${{ secrets.SENDGRID_KEY }}
-    to: user@example.com
-    from: team@yourapp.com
-    subject: Weekly report
-    body-html: <h1>Report</h1><p>Everything looks good.</p>
-    body-text: "Report: Everything looks good."
-```
-
-### Multiple recipients
-
-```yaml
-- uses: w3-io/w3-email-action@v1
-  with:
-    provider: resend
-    api-key: ${{ secrets.RESEND_KEY }}
-    to: alice@example.com, bob@example.com
-    from: alerts@yourapp.com
-    subject: System alert
-    body-text: Disk usage exceeded 90%
-```
-
-### Conditional email after compliance check
-
-```yaml
-- uses: w3-io/w3-chainalysis-action@v1
-  id: screen
-  with:
-    address: ${{ inputs.wallet }}
-    api-key: ${{ secrets.CHAINALYSIS_KEY }}
-
-- if: steps.screen.outputs.is-sanctioned == 'true'
-  uses: w3-io/w3-email-action@v1
-  with:
-    provider: sendgrid
-    api-key: ${{ secrets.SENDGRID_KEY }}
-    to: compliance@yourcompany.com
-    from: alerts@yourcompany.com
-    subject: "Sanctioned address detected: ${{ inputs.wallet }}"
-    body-html: "<p>Address ${{ inputs.wallet }} is on the OFAC sanctions list.</p>"
-```
-
-## Roadmap
-
-- [ ] AWS SES provider
-- [ ] Mailgun provider
-- [ ] Attachments support
-- [ ] Template ID support (provider-specific templates)
