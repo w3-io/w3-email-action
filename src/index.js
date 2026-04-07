@@ -1,4 +1,4 @@
-import { createCommandRouter, setJsonOutput, handleError } from '@w3-io/action-core'
+import { createCommandRouter, setJsonOutput, handleError, request, W3ActionError } from '@w3-io/action-core'
 import * as core from '@actions/core'
 
 // --- Helpers ---
@@ -16,7 +16,7 @@ function parseJsonInput(raw) {
   try {
     return JSON.parse(raw)
   } catch (e) {
-    throw new Error(`Invalid JSON input: ${e.message}`)
+    throw new W3ActionError('INVALID_JSON', `Invalid JSON input: ${e.message}`)
   }
 }
 
@@ -58,7 +58,7 @@ async function sendViaSendGrid(apiKey, email) {
   } else {
     // Direct mode — we provide subject and content
     if (!email.subject) {
-      throw new Error('subject is required when not using template-id')
+      throw new W3ActionError('MISSING_SUBJECT', 'subject is required when not using template-id')
     }
     payload.subject = email.subject
     payload.content = []
@@ -69,7 +69,7 @@ async function sendViaSendGrid(apiKey, email) {
       payload.content.push({ type: 'text/html', value: email.bodyHtml })
     }
     if (payload.content.length === 0) {
-      throw new Error('Either body-html or body-text is required when not using template-id')
+      throw new W3ActionError('MISSING_BODY', 'Either body-html or body-text is required when not using template-id')
     }
   }
 
@@ -83,22 +83,19 @@ async function sendViaSendGrid(apiKey, email) {
     }))
   }
 
-  const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+  const { status, raw } = await request('https://api.sendgrid.com/v3/mail/send', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(payload),
+    body: payload,
   })
-
-  const status = response.status
-  const body = await response.text()
 
   return {
     success: status >= 200 && status < 300,
     statusCode: status,
-    detail: body || 'accepted',
+    detail: raw || 'accepted',
   }
 }
 
@@ -120,7 +117,8 @@ async function sendViaResend(apiKey, email) {
   if (email.templateId) {
     // Resend doesn't have server-side templates in the same way.
     // Use react-email or HTML directly. Template-id is not supported.
-    throw new Error(
+    throw new W3ActionError(
+      'UNSUPPORTED_TEMPLATE',
       'Resend does not support server-side template IDs. Use body-html with template data interpolated via workflow expressions.',
     )
   }
@@ -129,11 +127,11 @@ async function sendViaResend(apiKey, email) {
   if (email.bodyText) payload.text = email.bodyText
 
   if (!payload.html && !payload.text) {
-    throw new Error('Either body-html or body-text is required')
+    throw new W3ActionError('MISSING_BODY', 'Either body-html or body-text is required')
   }
 
   if (!payload.subject) {
-    throw new Error('subject is required for Resend')
+    throw new W3ActionError('MISSING_SUBJECT', 'subject is required for Resend')
   }
 
   // Attachments
@@ -144,22 +142,19 @@ async function sendViaResend(apiKey, email) {
     }))
   }
 
-  const response = await fetch('https://api.resend.com/emails', {
+  const { status, raw } = await request('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(payload),
+    body: payload,
   })
-
-  const status = response.status
-  const body = await response.text()
 
   return {
     success: status >= 200 && status < 300,
     statusCode: status,
-    detail: body,
+    detail: raw,
   }
 }
 
@@ -186,12 +181,13 @@ const router = createCommandRouter({
     const attachments = parseJsonInput(core.getInput('attachments') || '') || []
 
     if (to.length === 0) {
-      throw new Error('At least one recipient is required')
+      throw new W3ActionError('MISSING_RECIPIENTS', 'At least one recipient is required')
     }
 
     const sendFn = PROVIDERS[provider]
     if (!sendFn) {
-      throw new Error(
+      throw new W3ActionError(
+        'UNKNOWN_PROVIDER',
         `Unknown provider: ${provider}. Available: ${Object.keys(PROVIDERS).join(', ')}`,
       )
     }
@@ -212,12 +208,6 @@ const router = createCommandRouter({
     }
 
     const result = await sendFn(apiKey, email)
-
-    if (!result.success) {
-      throw new Error(
-        `Email failed via ${provider}: ${result.statusCode} ${result.detail}`,
-      )
-    }
 
     core.info(
       `Email sent via ${provider} to ${to.join(', ')} (${result.statusCode})`,
