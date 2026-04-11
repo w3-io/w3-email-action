@@ -1,70 +1,70 @@
-name: 'W3 Email Action'
-description: 'Send email from W3 workflows. Supports SendGrid, Resend. Templates, CC/BCC, attachments.'
-author: 'w3-io'
+name: "W3 Email Action"
+description: "Send email from W3 workflows. Supports SendGrid, Resend. Templates, CC/BCC, attachments."
+author: "w3-io"
 
 inputs:
   provider:
-    description: 'Email provider: sendgrid, resend'
+    description: "Email provider: sendgrid, resend"
     required: true
-    default: 'sendgrid'
+    default: "sendgrid"
   api-key:
-    description: 'Provider API key'
+    description: "Provider API key"
     required: true
   to:
-    description: 'Recipient email address (or comma-separated list)'
+    description: "Recipient email address (or comma-separated list)"
     required: true
   cc:
-    description: 'CC recipients (comma-separated)'
+    description: "CC recipients (comma-separated)"
     required: false
-    default: ''
+    default: ""
   bcc:
-    description: 'BCC recipients (comma-separated)'
+    description: "BCC recipients (comma-separated)"
     required: false
-    default: ''
+    default: ""
   from:
-    description: 'Sender email address'
+    description: "Sender email address"
     required: true
   from-name:
-    description: 'Sender display name'
+    description: "Sender display name"
     required: false
-    default: ''
+    default: ""
   subject:
-    description: 'Email subject line (not required when using template-id)'
+    description: "Email subject line (not required when using template-id)"
     required: false
-    default: ''
+    default: ""
   body-html:
-    description: 'HTML email body'
+    description: "HTML email body"
     required: false
-    default: ''
+    default: ""
   body-text:
-    description: 'Plain text email body (fallback if no HTML)'
+    description: "Plain text email body (fallback if no HTML)"
     required: false
-    default: ''
+    default: ""
   reply-to:
-    description: 'Reply-to email address'
+    description: "Reply-to email address"
     required: false
-    default: ''
+    default: ""
   template-id:
-    description: 'Provider-side template ID (replaces body-html/body-text)'
+    description: "Provider-side template ID (replaces body-html/body-text)"
     required: false
-    default: ''
+    default: ""
   template-data:
-    description: 'JSON object of dynamic data for the template'
+    description: "JSON object of dynamic data for the template"
     required: false
-    default: ''
+    default: ""
   attachments:
     description: 'JSON array of attachments: [{"filename": "report.pdf", "content": "<base64>", "type": "application/pdf"}]'
     required: false
-    default: ''
+    default: ""
 
 outputs:
   success:
-    description: 'Whether the email was accepted by the provider (true/false)'
+    description: "Whether the email was accepted by the provider (true/false)"
   status-code:
-    description: 'HTTP status code from the provider API'
+    description: "HTTP status code from the provider API"
   result:
-    description: 'Full JSON result'
+    description: "Full JSON result"
 
 runs:
-  using: 'node20'
-  main: 'dist/index.js'
+  using: "node20"
+  main: "dist/index.js"

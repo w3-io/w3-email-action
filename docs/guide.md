@@ -36,22 +36,22 @@ Configure the behavior through the inputs below.
 
 ## Inputs
 
-| Input | Required | Default | Description |
-| --------------- | -------- | ---------- | ----------------------------------------------------------------- |
-| `provider` | yes | `sendgrid` | Email provider: `sendgrid` or `resend` |
-| `api-key` | yes | | Provider API key |
-| `to` | yes | | Recipient email (comma-separated for multiple) |
-| `from` | yes | | Sender email address (must be verified with provider) |
-| `from-name` | no | | Sender display name |
-| `subject` | no | | Subject line (not required when using `template-id`) |
-| `body-html` | no | | HTML email body |
-| `body-text` | no | | Plain text email body (used as fallback if no HTML) |
-| `cc` | no | | CC recipients (comma-separated) |
-| `bcc` | no | | BCC recipients (comma-separated) |
-| `reply-to` | no | | Reply-to email address |
-| `template-id` | no | | Provider-side template ID (replaces body-html/body-text) |
-| `template-data` | no | | JSON object of dynamic data for the template |
-| `attachments` | no | | JSON array of attachments (see below) |
+| Input           | Required | Default    | Description                                              |
+| --------------- | -------- | ---------- | -------------------------------------------------------- |
+| `provider`      | yes      | `sendgrid` | Email provider: `sendgrid` or `resend`                   |
+| `api-key`       | yes      |            | Provider API key                                         |
+| `to`            | yes      |            | Recipient email (comma-separated for multiple)           |
+| `from`          | yes      |            | Sender email address (must be verified with provider)    |
+| `from-name`     | no       |            | Sender display name                                      |
+| `subject`       | no       |            | Subject line (not required when using `template-id`)     |
+| `body-html`     | no       |            | HTML email body                                          |
+| `body-text`     | no       |            | Plain text email body (used as fallback if no HTML)      |
+| `cc`            | no       |            | CC recipients (comma-separated)                          |
+| `bcc`           | no       |            | BCC recipients (comma-separated)                         |
+| `reply-to`      | no       |            | Reply-to email address                                   |
+| `template-id`   | no       |            | Provider-side template ID (replaces body-html/body-text) |
+| `template-data` | no       |            | JSON object of dynamic data for the template             |
+| `attachments`   | no       |            | JSON array of attachments (see below)                    |
 
 At least one of `body-html`, `body-text`, or `template-id` is required.
 
@@ -69,11 +69,11 @@ At least one of `body-html`, `body-text`, or `template-id` is required.
 
 ## Outputs
 
-| Output | Type | Description |
-| ------------- | ------ | ------------------------------------------------- |
-| `success` | string | `true` if the provider accepted the email |
-| `status-code` | string | HTTP status code from the provider API |
-| `result` | string | Full JSON result |
+| Output        | Type   | Description                               |
+| ------------- | ------ | ----------------------------------------- |
+| `success`     | string | `true` if the provider accepted the email |
+| `status-code` | string | HTTP status code from the provider API    |
+| `result`      | string | Full JSON result                          |
 
 **Output (`result`) -- SendGrid:**
 
