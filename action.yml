@@ -58,12 +58,8 @@ inputs:
     default: ""
 
 outputs:
-  success:
-    description: "Whether the email was accepted by the provider (true/false)"
-  status-code:
-    description: "HTTP status code from the provider API"
   result:
-    description: "Full JSON result"
+    description: "JSON result of the operation. Includes provider, statusCode, and provider-specific fields. Use fromJSON(steps.<id>.outputs.result).statusCode etc. to access individual fields."
 
 runs:
   using: "node24"
