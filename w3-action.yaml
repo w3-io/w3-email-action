@@ -1,0 +1,61 @@
+kind: integration
+name: Multi-provider email — SendGrid, Resend
+version: 0.1.0
+repo: w3-io/w3-email-action
+description: Multi-provider email — SendGrid, Resend. Templates, CC/BCC, attachments.
+context: 'Send email from workflows via multiple providers. Same interface regardless
+  of provider — swap with one config line. Supports provider-side templates (SendGrid
+  dynamic templates), CC/BCC, reply-to, and base64 attachments.
+
+  '
+commands:
+- name: send
+  description: Send an email.
+  inputs:
+    provider:
+      type: string
+      required: true
+      description: sendgrid or resend
+    to:
+      type: string
+      required: true
+      description: Recipient (comma-separated for multiple)
+    from:
+      type: string
+      required: true
+      description: Sender email address
+    subject:
+      type: string
+      required: false
+      description: Subject line (optional with template-id)
+    body-html:
+      type: string
+      required: false
+      description: HTML email body
+    body-text:
+      type: string
+      required: false
+      description: Plain text fallback
+    template-id:
+      type: string
+      required: false
+      description: Provider-side template ID
+    template-data:
+      type: string
+      required: false
+      description: JSON object of dynamic template data
+    cc:
+      type: string
+      required: false
+      description: CC recipients (comma-separated)
+    bcc:
+      type: string
+      required: false
+      description: BCC recipients (comma-separated)
+  outputs:
+    success:
+      type: boolean
+      description: Whether provider accepted the email
+    status-code:
+      type: number
+      description: HTTP status from provider
