@@ -1,0 +1,43 @@
+# E2E Test Workflow
+#
+# Exercises the send command against real APIs.
+# Run on a local W3 network with:
+#   w3 workflow deploy test/workflows/e2e.yaml
+#   w3 workflow "email-e2e" trigger
+#
+# Prerequisites:
+#   - W3 local network running (make dev)
+#   - W3_SECRET_EMAIL_API_KEY set to a SendGrid or Resend API key
+#   - A verified sender domain for the from address
+
+name: email-e2e
+
+steps:
+  # ── SendGrid: Plain text email ─────────────────────────────────────────
+
+  - name: Send a plain text email via SendGrid
+    uses: w3-io/w3-email-action@v0
+    with:
+      provider: sendgrid
+      api-key: ${{ secrets.EMAIL_API_KEY }}
+      to: e2e-test@example.com
+      from: noreply@example.com
+      from-name: W3 E2E Test
+      subject: E2E Test - Plain Text
+      body-text: This is a plain text email sent by the W3 e2e test workflow.
+      reply-to: reply@example.com
+
+  # ── SendGrid: HTML email with CC/BCC ───────────────────────────────────
+
+  - name: Send an HTML email with CC and BCC
+    uses: w3-io/w3-email-action@v0
+    with:
+      provider: sendgrid
+      api-key: ${{ secrets.EMAIL_API_KEY }}
+      to: e2e-test@example.com
+      cc: cc-test@example.com
+      bcc: bcc-test@example.com
+      from: noreply@example.com
+      from-name: W3 E2E Test
+      subject: E2E Test - HTML
+      body-html: <h1>E2E Test</h1><p>This is an HTML email sent by the W3 e2e test workflow.</p>
