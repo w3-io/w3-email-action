@@ -21,7 +21,7 @@ jobs:
       # ── SendGrid: Plain text email ─────────────────────────────────────────
 
       - name: Send a plain text email via SendGrid
-        uses: w3-io/w3-email-action@v0
+        uses: w3-io/w3-email-action@main
         with:
           command: send
           provider: sendgrid
@@ -36,7 +36,7 @@ jobs:
       # ── SendGrid: HTML email with CC/BCC ───────────────────────────────────
 
       - name: Send an HTML email with CC and BCC
-        uses: w3-io/w3-email-action@v0
+        uses: w3-io/w3-email-action@main
         with:
           command: send
           provider: sendgrid
