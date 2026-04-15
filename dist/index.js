@@ -27626,7 +27626,7 @@ async function request(url, options = {}) {
  *   router();  // reads `command` input, dispatches, handles errors
  */
 function createCommandRouter(commands) {
-    return () => {
+    return async () => {
         const command = lib_core.getInput("command", { required: true });
         const handler = commands[command];
         if (!handler) {
@@ -27634,7 +27634,7 @@ function createCommandRouter(commands) {
             lib_core.setFailed(`Unknown command: '${command}'. Available: ${available}`);
             return;
         }
-        handler().catch(handleError);
+        await handler().catch(handleError);
     };
 }
 
@@ -27653,22 +27653,15 @@ function createCommandRouter(commands) {
  *   - $W3_BRIDGE_URL    → TCP URL (macOS Docker Desktop fallback)
  *
  * Usage:
- *   import { bridge, ethereum } from "@w3-io/action-core";
+ *   import { bridge, ethereum, solana, bitcoin, crypto } from "@w3-io/action-core";
  *
  *   // Typed helpers (recommended — autocomplete + type checking):
- *   const receipt = await ethereum.callContract({
- *     contract: "0x...",
- *     method: "deposit(uint256)",
- *     args: ["1000000"],
- *     gasMultiplier: "1.5",
- *   });
+ *   const receipt = await ethereum.callContract({ contract, method, args });
+ *   const { hash } = await crypto.keccak256({ data: "0xdeadbeef" });
+ *   const resolved = await ethereum.resolveName({ name: "vitalik.eth" });
  *
  *   // Generic (full control):
- *   const balance = await bridge.chain("ethereum", "get-balance", {
- *     address: "0x...",
- *   });
- *
- *   const hash = await bridge.crypto("keccak-256", { data: "0xdeadbeef" });
+ *   const balance = await bridge.chain("ethereum", "get-balance", { address: "0x..." });
  */
 
 // ---------------------------------------------------------------------------
@@ -27783,11 +27776,6 @@ async function health() {
 async function chain(chainName, action, params, network) {
     return chainRequest(chainName, action, params, network);
 }
-async function bridge_crypto(action, params) {
-    return (await bridgeRequest(`/crypto/${action}`, {
-        params,
-    }));
-}
 // ---------------------------------------------------------------------------
 // Public API — typed chain helpers
 // ---------------------------------------------------------------------------
@@ -27805,7 +27793,12 @@ const ethereum = {
     getTransaction: (params, network) => chainRequest("ethereum", "get-transaction", params, network),
     waitForTransaction: (params, network) => chainRequest("ethereum", "wait-for-transaction", params, network),
     getEvents: (params, network) => chainRequest("ethereum", "get-events", params, network),
+    getSignerAddress: (params, network) => chainRequest("ethereum", "get-signer-address", params, network),
     resolveName: (params, network) => chainRequest("ethereum", "resolve-name", params, network),
+    /** Reverse-resolve an address to an ENS name. Includes forward verification to prevent spoofing. */
+    reverseResolveName: (params, network) => chainRequest("ethereum", "reverse-resolve-name", params, network),
+    signMessage: (params, network) => chainRequest("ethereum", "sign-message", params, network),
+    signTypedData: (params, network) => chainRequest("ethereum", "sign-typed-data", params, network),
     getTokenBalance: (params, network) => chainRequest("ethereum", "get-token-balance", params, network),
     getTokenAllowance: (params, network) => chainRequest("ethereum", "get-token-allowance", params, network),
     getNftOwner: (params, network) => chainRequest("ethereum", "get-nft-owner", params, network),
@@ -27837,27 +27830,69 @@ const bitcoin = {
     waitForTransaction: (params, network) => chainRequest("bitcoin", "wait-for-transaction", params, network),
 };
 // ---------------------------------------------------------------------------
+// Public API — typed crypto helpers
+// ---------------------------------------------------------------------------
+function cryptoRequest(action, params) {
+    return bridgeRequest(`/crypto/${action}`, { params });
+}
+/**
+ * Typed crypto operations.
+ *
+ *   import { crypto } from "@w3-io/action-core";
+ *
+ *   const { hash } = await crypto.keccak256({ data: "0xdeadbeef" });
+ *   const { code } = await crypto.totp({ secret: "0x..." });
+ *   const { token } = await crypto.jwtSign({ claims: '{"sub":"1"}', key: "secret" });
+ */
+const bridge_crypto = {
+    /** Keccak-256 hash. Returns `{ hash: "0x..." }`. */
+    keccak256: (params) => cryptoRequest("keccak256", params),
+    /** AES-256-GCM encrypt. Returns `{ ciphertext: "0x..." }`. */
+    aesEncrypt: (params) => cryptoRequest("aes-encrypt", params),
+    /** AES-256-GCM decrypt. Returns `{ plaintext: "0x..." }`. */
+    aesDecrypt: (params) => cryptoRequest("aes-decrypt", params),
+    /** Ed25519 sign. Returns `{ signature: "0x..." }`. */
+    ed25519Sign: (params) => cryptoRequest("ed25519-sign", params),
+    /** Ed25519 verify. Returns `{ valid: boolean }`. */
+    ed25519Verify: async (params) => {
+        const raw = await cryptoRequest("ed25519-verify", params);
+        return { ...raw, valid: String(raw.valid) === "true" };
+    },
+    /** Ed25519 public key from private key. Returns `{ publicKey: "0x..." }`. */
+    ed25519PublicKey: (params) => cryptoRequest("ed25519-public-key", params),
+    /** HKDF-SHA256 key derivation. Returns `{ key: "0x..." }`. */
+    hkdf: (params) => cryptoRequest("hkdf", params),
+    /** Create a signed JWT. Returns `{ token: "eyJ..." }`. */
+    jwtSign: (params) => cryptoRequest("jwt-sign", params),
+    /** Verify and decode a JWT. Returns `{ valid: boolean, claims: string }`. */
+    jwtVerify: async (params) => {
+        const raw = await cryptoRequest("jwt-verify", params);
+        return { ...raw, valid: String(raw.valid) === "true" };
+    },
+    /** Generate a TOTP code. Returns `{ code: "123456" }`. */
+    totp: (params) => cryptoRequest("totp", params),
+};
+// ---------------------------------------------------------------------------
 // Default export
 // ---------------------------------------------------------------------------
 /**
  * The bridge client.
  *
- *   import { bridge, ethereum, solana, bitcoin } from "@w3-io/action-core";
+ *   import { bridge, ethereum, solana, bitcoin, crypto } from "@w3-io/action-core";
  *
  *   // Typed (recommended):
  *   const receipt = await ethereum.callContract({ contract, method, args });
  *   const sig = await solana.callProgram({ programId, accounts, data });
  *   const tx = await bitcoin.send({ to, amount });
+ *   const { hash } = await crypto.keccak256({ data: "0x..." });
+ *   const { address } = await ethereum.resolveName({ name: "vitalik.eth" });
  *
  *   // Generic:
  *   const bal = await bridge.chain("ethereum", "get-balance", { address });
- *   const hash = await bridge.crypto("keccak-256", { data: "0x..." });
- *   const ok = await bridge.health();
  */
 const bridge = {
     health,
     chain,
-    crypto: bridge_crypto,
 };
 
 ;// CONCATENATED MODULE: ./node_modules/@w3-io/action-core/dist/summary.js
