@@ -42,8 +42,6 @@ jobs:
           provider: sendgrid
           api-key: ${{ secrets.EMAIL_API_KEY }}
           to: ${{ secrets.EMAIL_TO }}
-          cc: ${{ secrets.EMAIL_TO }}
-          bcc: ${{ secrets.EMAIL_TO }}
           from: ${{ secrets.EMAIL_FROM }}
           from-name: W3 E2E Test
           subject: E2E Test - HTML
