@@ -25,7 +25,7 @@ jobs:
         with:
           command: send
           provider: sendgrid
-          api-key: ${{ secrets.EMAIL_API_KEY, EMAIL_FROM (verified sender address) }}
+          api-key: ${{ secrets.EMAIL_API_KEY }}
           to: e2e-test@example.com
           from: ${{ secrets.EMAIL_FROM }}
           from-name: W3 E2E Test
@@ -40,7 +40,7 @@ jobs:
         with:
           command: send
           provider: sendgrid
-          api-key: ${{ secrets.EMAIL_API_KEY, EMAIL_FROM (verified sender address) }}
+          api-key: ${{ secrets.EMAIL_API_KEY }}
           to: e2e-test@example.com
           cc: cc-test@example.com
           bcc: bcc-test@example.com
