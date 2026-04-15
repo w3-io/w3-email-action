@@ -23,6 +23,7 @@ jobs:
       - name: Send a plain text email via SendGrid
         uses: w3-io/w3-email-action@v0
         with:
+          command: send
           provider: sendgrid
           api-key: ${{ secrets.EMAIL_API_KEY }}
           to: e2e-test@example.com
@@ -37,6 +38,7 @@ jobs:
       - name: Send an HTML email with CC and BCC
         uses: w3-io/w3-email-action@v0
         with:
+          command: send
           provider: sendgrid
           api-key: ${{ secrets.EMAIL_API_KEY }}
           to: e2e-test@example.com
