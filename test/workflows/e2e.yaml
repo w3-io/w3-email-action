@@ -7,7 +7,7 @@
 #
 # Prerequisites:
 #   - W3 local network running (make dev)
-#   - W3_SECRET_EMAIL_API_KEY, EMAIL_FROM (verified sender address) set to a SendGrid or Resend API key
+#   - W3_SECRET_EMAIL_API_KEY, EMAIL_FROM (verified sender), EMAIL_TO (recipient) (verified sender address) set to a SendGrid or Resend API key
 #   - A verified sender domain for the from address
 
 name: email-e2e
@@ -26,7 +26,7 @@ jobs:
           command: send
           provider: sendgrid
           api-key: ${{ secrets.EMAIL_API_KEY }}
-          to: e2e-test@example.com
+          to: ${{ secrets.EMAIL_TO }}
           from: ${{ secrets.EMAIL_FROM }}
           from-name: W3 E2E Test
           subject: E2E Test - Plain Text
@@ -41,9 +41,9 @@ jobs:
           command: send
           provider: sendgrid
           api-key: ${{ secrets.EMAIL_API_KEY }}
-          to: e2e-test@example.com
-          cc: cc-test@example.com
-          bcc: bcc-test@example.com
+          to: ${{ secrets.EMAIL_TO }}
+          cc: ${{ secrets.EMAIL_TO }}
+          bcc: ${{ secrets.EMAIL_TO }}
           from: ${{ secrets.EMAIL_FROM }}
           from-name: W3 E2E Test
           subject: E2E Test - HTML
