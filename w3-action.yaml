@@ -1,5 +1,6 @@
 kind: integration
-name: Multi-provider email — SendGrid, Resend
+partner: email
+name: Email
 version: 0.1.0
 repo: w3-io/w3-email-action
 description: Multi-provider email — SendGrid, Resend. Templates, CC/BCC, attachments.
