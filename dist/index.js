@@ -27605,7 +27605,15 @@ async function request(url, options = {}) {
                 statusCode: response.status,
             });
         }
-        return (await response.json());
+        const text = await response.text();
+        if (!text)
+            return { status: response.status, raw: "" };
+        try {
+            return JSON.parse(text);
+        }
+        catch {
+            return { status: response.status, raw: text };
+        }
     }
     finally {
         clearTimeout(timer);
@@ -27626,7 +27634,7 @@ async function request(url, options = {}) {
  *   router();  // reads `command` input, dispatches, handles errors
  */
 function createCommandRouter(commands) {
-    return () => {
+    return async () => {
         const command = lib_core.getInput("command", { required: true });
         const handler = commands[command];
         if (!handler) {
@@ -27634,7 +27642,7 @@ function createCommandRouter(commands) {
             lib_core.setFailed(`Unknown command: '${command}'. Available: ${available}`);
             return;
         }
-        handler().catch(handleError);
+        await handler().catch(handleError);
     };
 }
 
@@ -27653,22 +27661,15 @@ function createCommandRouter(commands) {
  *   - $W3_BRIDGE_URL    → TCP URL (macOS Docker Desktop fallback)
  *
  * Usage:
- *   import { bridge, ethereum } from "@w3-io/action-core";
+ *   import { bridge, ethereum, solana, bitcoin, crypto } from "@w3-io/action-core";
  *
  *   // Typed helpers (recommended — autocomplete + type checking):
- *   const receipt = await ethereum.callContract({
- *     contract: "0x...",
- *     method: "deposit(uint256)",
- *     args: ["1000000"],
- *     gasMultiplier: "1.5",
- *   });
+ *   const receipt = await ethereum.callContract({ contract, method, args });
+ *   const { hash } = await crypto.keccak256({ data: "0xdeadbeef" });
+ *   const resolved = await ethereum.resolveName({ name: "vitalik.eth" });
  *
  *   // Generic (full control):
- *   const balance = await bridge.chain("ethereum", "get-balance", {
- *     address: "0x...",
- *   });
- *
- *   const hash = await bridge.crypto("keccak-256", { data: "0xdeadbeef" });
+ *   const balance = await bridge.chain("ethereum", "get-balance", { address: "0x..." });
  */
 
 // ---------------------------------------------------------------------------
@@ -27783,16 +27784,11 @@ async function health() {
 async function chain(chainName, action, params, network) {
     return chainRequest(chainName, action, params, network);
 }
-async function bridge_crypto(action, params) {
-    return (await bridgeRequest(`/crypto/${action}`, {
-        params,
-    }));
-}
 // ---------------------------------------------------------------------------
 // Public API — typed chain helpers
 // ---------------------------------------------------------------------------
 /** Typed Ethereum operations. */
-const ethereum = {
+const bridge_ethereum = {
     getBalance: (params, network) => chainRequest("ethereum", "get-balance", params, network),
     readContract: (params, network) => chainRequest("ethereum", "read-contract", params, network),
     callContract: (params, network) => chainRequest("ethereum", "call-contract", params, network),
@@ -27805,7 +27801,12 @@ const ethereum = {
     getTransaction: (params, network) => chainRequest("ethereum", "get-transaction", params, network),
     waitForTransaction: (params, network) => chainRequest("ethereum", "wait-for-transaction", params, network),
     getEvents: (params, network) => chainRequest("ethereum", "get-events", params, network),
+    getSignerAddress: (params, network) => chainRequest("ethereum", "get-signer-address", params, network),
     resolveName: (params, network) => chainRequest("ethereum", "resolve-name", params, network),
+    /** Reverse-resolve an address to an ENS name. Includes forward verification to prevent spoofing. */
+    reverseResolveName: (params, network) => chainRequest("ethereum", "reverse-resolve-name", params, network),
+    signMessage: (params, network) => chainRequest("ethereum", "sign-message", params, network),
+    signTypedData: (params, network) => chainRequest("ethereum", "sign-typed-data", params, network),
     getTokenBalance: (params, network) => chainRequest("ethereum", "get-token-balance", params, network),
     getTokenAllowance: (params, network) => chainRequest("ethereum", "get-token-allowance", params, network),
     getNftOwner: (params, network) => chainRequest("ethereum", "get-nft-owner", params, network),
@@ -27826,6 +27827,14 @@ const solana = {
     generateKeypair: () => bridgeRequest("/solana/generate-keypair", {}),
     /** Get the payer's public key (no secret exposed). */
     payerAddress: () => bridgeRequest("/solana/payer-address"),
+    /** Derive a Program Derived Address from seeds and a program ID. */
+    findPda: (params) => bridgeRequest("/solana/find-pda", params),
+    /** Decode a base58 Solana address to hex bytes. */
+    decodeAddress: (params) => bridgeRequest("/solana/decode-address", params),
+    /** Encode hex bytes to a base58 Solana address. */
+    encodeAddress: (params) => bridgeRequest("/solana/encode-address", params),
+    /** Derive the Associated Token Account address for an owner and mint. */
+    getAta: (params) => bridgeRequest("/solana/get-ata", params),
 };
 /** Typed Bitcoin operations. */
 const bitcoin = {
@@ -27837,27 +27846,69 @@ const bitcoin = {
     waitForTransaction: (params, network) => chainRequest("bitcoin", "wait-for-transaction", params, network),
 };
 // ---------------------------------------------------------------------------
+// Public API — typed crypto helpers
+// ---------------------------------------------------------------------------
+function cryptoRequest(action, params) {
+    return bridgeRequest(`/crypto/${action}`, { params });
+}
+/**
+ * Typed crypto operations.
+ *
+ *   import { crypto } from "@w3-io/action-core";
+ *
+ *   const { hash } = await crypto.keccak256({ data: "0xdeadbeef" });
+ *   const { code } = await crypto.totp({ secret: "0x..." });
+ *   const { token } = await crypto.jwtSign({ claims: '{"sub":"1"}', key: "secret" });
+ */
+const bridge_crypto = {
+    /** Keccak-256 hash. Returns `{ hash: "0x..." }`. */
+    keccak256: (params) => cryptoRequest("keccak256", params),
+    /** AES-256-GCM encrypt. Returns `{ ciphertext: "0x..." }`. */
+    aesEncrypt: (params) => cryptoRequest("aes-encrypt", params),
+    /** AES-256-GCM decrypt. Returns `{ plaintext: "0x..." }`. */
+    aesDecrypt: (params) => cryptoRequest("aes-decrypt", params),
+    /** Ed25519 sign. Returns `{ signature: "0x..." }`. */
+    ed25519Sign: (params) => cryptoRequest("ed25519-sign", params),
+    /** Ed25519 verify. Returns `{ valid: boolean }`. */
+    ed25519Verify: async (params) => {
+        const raw = await cryptoRequest("ed25519-verify", params);
+        return { ...raw, valid: String(raw.valid) === "true" };
+    },
+    /** Ed25519 public key from private key. Returns `{ publicKey: "0x..." }`. */
+    ed25519PublicKey: (params) => cryptoRequest("ed25519-public-key", params),
+    /** HKDF-SHA256 key derivation. Returns `{ key: "0x..." }`. */
+    hkdf: (params) => cryptoRequest("hkdf", params),
+    /** Create a signed JWT. Returns `{ token: "eyJ..." }`. */
+    jwtSign: (params) => cryptoRequest("jwt-sign", params),
+    /** Verify and decode a JWT. Returns `{ valid: boolean, claims: string }`. */
+    jwtVerify: async (params) => {
+        const raw = await cryptoRequest("jwt-verify", params);
+        return { ...raw, valid: String(raw.valid) === "true" };
+    },
+    /** Generate a TOTP code. Returns `{ code: "123456" }`. */
+    totp: (params) => cryptoRequest("totp", params),
+};
+// ---------------------------------------------------------------------------
 // Default export
 // ---------------------------------------------------------------------------
 /**
  * The bridge client.
  *
- *   import { bridge, ethereum, solana, bitcoin } from "@w3-io/action-core";
+ *   import { bridge, ethereum, solana, bitcoin, crypto } from "@w3-io/action-core";
  *
  *   // Typed (recommended):
  *   const receipt = await ethereum.callContract({ contract, method, args });
  *   const sig = await solana.callProgram({ programId, accounts, data });
  *   const tx = await bitcoin.send({ to, amount });
+ *   const { hash } = await crypto.keccak256({ data: "0x..." });
+ *   const { address } = await ethereum.resolveName({ name: "vitalik.eth" });
  *
  *   // Generic:
  *   const bal = await bridge.chain("ethereum", "get-balance", { address });
- *   const hash = await bridge.crypto("keccak-256", { data: "0x..." });
- *   const ok = await bridge.health();
  */
 const bridge = {
     health,
     chain,
-    crypto: bridge_crypto,
 };
 
 ;// CONCATENATED MODULE: ./node_modules/@w3-io/action-core/dist/summary.js
@@ -27899,6 +27950,135 @@ async function writeSummary(heading, content) {
     catch {
         // Silently skip — environment may not support job summaries
     }
+}
+
+;// CONCATENATED MODULE: ./node_modules/@w3-io/action-core/dist/x402.js
+/**
+ * x402 / SIWE (EIP-4361) authentication helpers.
+ *
+ * Enables W3 actions to authenticate with x402-compatible APIs using
+ * wallet-based identity. The bridge provides signing — the private
+ * key never leaves the bridge process.
+ *
+ * Usage:
+ *
+ *   import { createX402Fetch } from "@w3-io/action-core";
+ *
+ *   const x402fetch = createX402Fetch({
+ *     domain: "api.venice.ai",
+ *     chainId: 8453,
+ *   });
+ *
+ *   // Uses SIWE auth automatically — no API key needed
+ *   const res = await x402fetch("https://api.venice.ai/api/v1/models");
+ */
+
+/**
+ * Build an EIP-4361 SIWE plaintext message.
+ *
+ * The format is deterministic — no external SIWE library needed.
+ * See: https://eips.ethereum.org/EIPS/eip-4361
+ */
+function buildSiweMessage(params) {
+    const { domain, address, statement = "Sign in with Ethereum", uri, version = "1", chainId, nonce, issuedAt, expirationTime, } = params;
+    // EIP-4361 specifies this exact format
+    let message = `${domain} wants you to sign in with your Ethereum account:\n`;
+    message += `${address}\n`;
+    message += `\n`;
+    message += `${statement}\n`;
+    message += `\n`;
+    message += `URI: ${uri}\n`;
+    message += `Version: ${version}\n`;
+    message += `Chain ID: ${chainId}\n`;
+    message += `Nonce: ${nonce}\n`;
+    message += `Issued At: ${issuedAt}\n`;
+    message += `Expiration Time: ${expirationTime}`;
+    return message;
+}
+// ---------------------------------------------------------------------------
+// Nonce generator
+// ---------------------------------------------------------------------------
+/** Generate a random 16-character hex nonce. */
+function randomNonce() {
+    const bytes = new Uint8Array(8);
+    globalThis.crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+/**
+ * Create a signer function that produces fresh SIWE auth headers.
+ *
+ * Returns an async function that, given a request URL, constructs
+ * a SIWE message, signs it via the bridge, and returns the header
+ * object to attach to the request.
+ *
+ * The signer address is cached after the first call. The SIWE
+ * message is generated fresh each time (nonce + timestamp).
+ */
+function createX402Signer(options) {
+    const { domain, chainId, statement, expiryMs = 5 * 60 * 1000, } = options;
+    let cachedAddress = null;
+    return async function signSiwe(requestUrl) {
+        // Get signer address (cached after first call)
+        if (!cachedAddress) {
+            const result = await ethereum.getSignerAddress({});
+            cachedAddress = result.address;
+        }
+        // Build fresh SIWE message
+        const now = new Date();
+        const expiry = new Date(now.getTime() + expiryMs);
+        const message = buildSiweMessage({
+            domain,
+            address: cachedAddress,
+            statement,
+            uri: requestUrl,
+            chainId,
+            nonce: randomNonce(),
+            issuedAt: now.toISOString(),
+            expirationTime: expiry.toISOString(),
+        });
+        // Sign via bridge (EIP-191 personal_sign)
+        const { signature } = (await ethereum.signMessage({ message }));
+        // Build the header payload
+        const payload = {
+            address: cachedAddress,
+            message,
+            signature,
+            timestamp: now.getTime(),
+            chainId,
+        };
+        return {
+            "X-Sign-In-With-X": btoa(JSON.stringify(payload)),
+        };
+    };
+}
+/**
+ * Create a fetch function that automatically attaches SIWE auth headers.
+ *
+ * Drop-in replacement for `fetch` — same signature, same behavior,
+ * but every request gets a fresh `X-Sign-In-With-X` header.
+ *
+ *   const x402fetch = createX402Fetch({ domain: "api.venice.ai", chainId: 8453 });
+ *   const res = await x402fetch("https://api.venice.ai/api/v1/models");
+ */
+function createX402Fetch(options) {
+    const { baseFetch = fetch, ...signerOptions } = options;
+    const signer = createX402Signer(signerOptions);
+    return async function x402Fetch(input, init) {
+        const url = typeof input === "string"
+            ? input
+            : input instanceof URL
+                ? input.toString()
+                : input.url;
+        const authHeaders = await signer(url);
+        const mergedInit = {
+            ...init,
+            headers: {
+                ...Object.fromEntries(new Headers(init?.headers).entries()),
+                ...authHeaders,
+            },
+        };
+        return baseFetch(input, mergedInit);
+    };
 }
 
 ;// CONCATENATED MODULE: ./node_modules/@w3-io/action-core/dist/test.js
@@ -27985,6 +28165,7 @@ function createMockCore() {
 }
 
 ;// CONCATENATED MODULE: ./node_modules/@w3-io/action-core/dist/index.js
+
 
 
 
